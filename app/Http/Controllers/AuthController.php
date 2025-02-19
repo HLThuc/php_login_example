@@ -3,15 +3,25 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use App\Services\AuthService;
 
 class AuthController extends Controller
 {
+    private $AuthService;
+
+    public function __construct(AuthService $AuthService) {
+        $this->AuthService = $AuthService;
+    }
+    
+    public function home() {
+        return redirect('/login');
+    }
+
     public function showLoginForm()
     {
-        if (Auth::check()) {
+        if ($this->AuthService->isLoggedIn()) {
             return redirect('/hello');
         }
         return view('auth.login');
@@ -24,7 +34,7 @@ class AuthController extends Controller
             'password' => 'required'
         ]);
 
-        if (Auth::attempt($credentials)) {
+        if ($this->AuthService->login($credentials)) {
             return redirect()->intended('/hello');
         }
 
@@ -33,13 +43,13 @@ class AuthController extends Controller
 
     public function logout()
     {
-        Auth::logout();
+        $this->AuthService->logout();
         return redirect('/login');
     }
 
     public function showRegisterForm()
     {
-        if (Auth::check()) {
+        if ($this->AuthService->isLoggedIn()) {
             return redirect('/hello');
         }
         return view('auth.register');
@@ -51,15 +61,11 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|min:6|confirmed'
         ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
-
-        Auth::login($user);
-
+        $this->AuthService->register(
+            $request->name,
+            $request->email,
+            $request->password,
+        );
         return redirect('/hello');
     }
 }
